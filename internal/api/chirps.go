@@ -146,3 +146,37 @@ func cleanBody(body string) string {
 	}
 	return strings.Join(words, " ")
 }
+
+func (cfg *Config) deleteChirpsById(resw http.ResponseWriter, req *http.Request) {
+	bearer, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		errorResponse(resw, "Unauthorized", 401)
+		return
+	}
+	uid, err := auth.ValidateJWT(bearer, cfg.jwtSecret)
+	if err != nil {
+		errorResponse(resw, "Unauthorized", 403)
+		return
+	}
+	chirpId := req.PathValue("id")
+	parsedId, err := uuid.Parse(chirpId)
+	if err != nil {
+		errorResponse(resw, "Invalid Id", 401)
+		return
+	}
+	chirp, err := cfg.db.GetChirpsById(req.Context(), parsedId)
+	if err != nil {
+		errorResponse(resw, "Not found", 404)
+		return
+	}
+	if chirp.UserID != uid {
+		errorResponse(resw, "Unauthorized", 403)
+		return
+	}
+	err = cfg.db.DeleteChirpById(req.Context(), chirp.ID)
+	if err != nil {
+		errorResponse(resw, "Failed deletion", 500)
+		return
+	}
+	resw.WriteHeader(204)
+}

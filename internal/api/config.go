@@ -33,6 +33,7 @@ func (cfg *Config) Router(staticDir string) http.Handler {
 	mux.HandleFunc("POST /api/chirps", cfg.createChirp)
 	mux.HandleFunc("GET /api/chirps", cfg.chirpsOrderedByCreatedAt)
 	mux.HandleFunc("GET /api/chirps/{id}", cfg.chirpsById)
+	mux.HandleFunc("DELETE /api/chirps/{id}", cfg.deleteChirpsById)
 
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
