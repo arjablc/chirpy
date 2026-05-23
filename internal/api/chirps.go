@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/arjablc/chirpy/internal/auth"
 	"github.com/arjablc/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -42,7 +44,20 @@ func (C *Config) createChirp(res http.ResponseWriter, req *http.Request) {
 		errorResponse(res, "Failed to unmarsal body", 500)
 		return
 	}
-	createChirpParams := database.CreateChirpParams{Body: reqBody.Body, UserID: reqBody.UserId}
+	bearerToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		fmt.Println("No bearer", err)
+		errorResponse(res, "Unauthorized", 401)
+		return
+	}
+	uid, err := auth.ValidateJWT(bearerToken, C.jwtSecret)
+	if err != nil {
+		fmt.Println("validation error", err)
+		errorResponse(res, "Unauthorized", 401)
+		return
+	}
+
+	createChirpParams := database.CreateChirpParams{Body: reqBody.Body, UserID: uid}
 	dbChirp, err := C.db.CreateChirp(req.Context(), createChirpParams)
 	if err != nil {
 		errorResponse(res, "Failed to create chirp", 500)
