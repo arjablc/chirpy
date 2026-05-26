@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,6 +34,7 @@ func (C *Config) createChirp(res http.ResponseWriter, req *http.Request) {
 		Body   string    `json:"body"`
 		UserId uuid.UUID `json:"user_id"`
 	}
+
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		errorResponse(res, "Failed to read body", 500)
@@ -91,15 +93,41 @@ func (cfg *Config) chirpsById(resw http.ResponseWriter, req *http.Request) {
 		Body:      chirp.Body,
 		UserId:    chirp.UserID,
 	})
+}
 
+func authorIdFromRequest(req *http.Request) (uuid.UUID, error) {
+	authorId := req.URL.Query().Get("author_id")
+	if authorId == "" {
+		return uuid.Nil, nil
+	} else {
+		parsed, err := uuid.Parse(authorId)
+		return parsed, err
+	}
 }
 
 func (cfg *Config) chirpsOrderedByCreatedAt(writer http.ResponseWriter, req *http.Request) {
-	chirps, err := cfg.db.GetChirpsOrderedBy(req.Context())
+	authorId, err := authorIdFromRequest(req)
+	sortOrder := req.URL.Query().Get("sort")
 	if err != nil {
+		errorResponse(writer, "Invalid author id ", 401)
+		return
+	}
+	var (
+		chirps []database.Chirp
+		dbErr  error
+	)
+
+	if authorId == uuid.Nil {
+		chirps, dbErr = cfg.db.GetChirps(req.Context())
+	} else {
+		chirps, dbErr = cfg.db.GetChirpsForAuthor(req.Context(), authorId)
+	}
+
+	if dbErr != nil {
 		errorResponse(writer, "Failed to get Chirps", 500)
 		return
 	}
+
 	if len(chirps) < 1 {
 		errorResponse(writer, "No chirps found", 404)
 		return
@@ -114,6 +142,11 @@ func (cfg *Config) chirpsOrderedByCreatedAt(writer http.ResponseWriter, req *htt
 			UserId:    chirp.UserID,
 		})
 	}
+
+	if sortOrder == "desc" {
+		sort.Slice(resChirps, func(i, j int) bool { return resChirps[i].CreatedAt.After(resChirps[j].CreatedAt) })
+	}
+
 	respondJSON(writer, 200, resChirps)
 }
 

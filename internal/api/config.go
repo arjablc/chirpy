@@ -12,10 +12,11 @@ type Config struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polkaKey       string
 }
 
-func NewConfig(db *database.Queries, platform string, jwtSecret string) *Config {
-	return &Config{db: db, platform: platform, jwtSecret: jwtSecret}
+func NewConfig(db *database.Queries, platform string, jwtSecret string, polkaKey string) *Config {
+	return &Config{db: db, platform: platform, jwtSecret: jwtSecret, polkaKey: polkaKey}
 }
 
 func (cfg *Config) Router(staticDir string) http.Handler {
@@ -27,6 +28,8 @@ func (cfg *Config) Router(staticDir string) http.Handler {
 	mux.HandleFunc("POST /api/users", cfg.createUser)
 	mux.HandleFunc("PUT /api/users", cfg.updateUser)
 	mux.HandleFunc("POST /api/login", cfg.loginUser)
+	mux.HandleFunc("POST /api/polka/webhooks", cfg.polkaWebhookListener)
+
 	mux.HandleFunc("POST /api/refresh", cfg.refreshToken)
 	mux.HandleFunc("POST /api/revoke", cfg.revokeRefreshToken)
 	// chirps

@@ -21,6 +21,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Db connect err: %v", err)
@@ -28,7 +29,7 @@ func main() {
 	}
 	defer db.Close()
 	dbQueries := database.New(db)
-	cfg := api.NewConfig(dbQueries, platform, jwtSecret)
+	cfg := api.NewConfig(dbQueries, platform, jwtSecret, polkaKey)
 
 	port := "8080"
 	server := http.Server{
